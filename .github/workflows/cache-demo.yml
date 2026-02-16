@@ -1,0 +1,95 @@
+name: Multi-Language Dependency Caching
+
+on:
+  push:
+    branches:
+      - main
+    pull_request:
+
+jobs:
+  node-job:
+    runs-on: ubuntu-latest
+
+    stratgey:
+      matrix:
+        node-version: [18, 20]
+    
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup node
+        uses: actions/checkout@v3
+        with:
+          node-version: ${{matrix.node-version}}
+          cache: 'npm'
+
+      - name: Install Dependencies
+        working-directory: node-app
+        run: npm ci
+      
+      - name: Run Tests
+        working-directory: node-app
+        run: npm test
+
+  python-job:
+    runs-on: ubuntu-latest
+
+    stratgey:
+      matrix:
+        python-version: ["3.9", "3.10"]
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup python
+        uses: actions/checkout@v4
+        with:
+          python-version: ${{matrix.python-version}}
+
+      - name: Cache pip
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pip
+          key: ${{runner.os}}-pip-${{matrix.python-version}}-${{hashFiles('python-app/requirements.txt')}}
+          restore-keys: |
+            ${{runner.os}}-pip-${{matrix.python-version}}-
+
+      - name: Install Dependencies
+        working-directory: python-app
+        run: | 
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run Tests
+        working-directory: python-app
+        run: pytest
+
+  java-job:
+    runs-on: ubuntu:latest
+
+    stratgey:
+      matrix:
+        java-version: [17,21]
+    
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup java
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'temurin'
+          java-version: ${{matrix.java-version}}
+      
+      - name: Cache Maven
+        uses: actions/cache@v3
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-maven-${{ matrix.java-version }}-${{ hashFiles('java-app/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-${{ matrix.java-version }}-
+
+      - name: Build with Maven
+        working-directory: java-app
+        run: mvn clean install
+
+      
